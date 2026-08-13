@@ -1,0 +1,29 @@
+# ============================================================
+# NFC 隐藏信息系统 - systemd 服务文件
+# 部署到服务器后：
+#   cp deploy/nfc-server.service /etc/systemd/system/
+#   systemctl daemon-reload
+#   systemctl enable --now nfc-server
+# ============================================================
+[Unit]
+Description=NFC Info Server (Express HTTPS on 2999)
+After=network.target
+
+[Service]
+Type=simple
+# 项目路径（按实际部署位置修改）
+WorkingDirectory=/opt/nfc-game/server
+# 运行用户（避免以 root 运行，建议创建专用用户）
+# User=nfcgame
+# Group=nfcgame
+EnvironmentFile=/opt/nfc-game/server/.env
+ExecStart=/usr/bin/node /opt/nfc-game/server/src/index.js
+Restart=always
+RestartSec=3
+# 日志
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nfc-server
+
+[Install]
+WantedBy=multi-user.target

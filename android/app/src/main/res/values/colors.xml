@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色简约 · 青绿(Teal)强调 配色方案 -->
+
+    <!-- 背景与表面 -->
+    <color name="bg_dark">#0F141A</color>          <!-- 主背景：深冷灰 -->
+    <color name="bg_panel">#171D24</color>         <!-- 面板 / 底部导航背景 -->
+    <color name="bg_card">#1C242C</color>          <!-- 卡片表面 -->
+
+    <!-- 强调色（青绿 Teal 色阶） -->
+    <color name="neon_green">#2DD4BF</color>       <!-- 主强调（Teal-400）：按钮/选中态/标题 -->
+    <color name="neon_green_dim">#14B8A6</color>   <!-- 强调·暗（Teal-500）：描边/次级 -->
+    <color name="neon_cyan">#5EEAD4</color>        <!-- 辅助强调（Teal-300）：高亮文字/UID -->
+
+    <!-- 文字 -->
+    <color name="text_primary">#E8EEF2</color>     <!-- 主文字 -->
+    <color name="text_secondary">#9AA7B0</color>   <!-- 次要文字 -->
+    <color name="text_dim">#6B7880</color>         <!-- 弱化 / 占位文字 -->
+    <color name="line_dim">#2A343C</color>         <!-- 分割线 / 描边 -->
+
+    <!-- 语义色 -->
+    <color name="error_red">#F87171</color>        <!-- 错误提示 -->
+
+    <!-- 交互反馈 -->
+    <color name="accent_ripple">#1F2DD4BF</color>  <!-- 按压水波（青绿 12% 透明） -->
+</resources>

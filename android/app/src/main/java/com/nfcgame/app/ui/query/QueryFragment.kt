@@ -1,0 +1,264 @@
+package com.nfcgame.app.ui.query
+
+import android.Manifest
+import android.content.ContentValues
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.os.Environment
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.provider.MediaStore
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import com.bumptech.glide.Glide
+import com.nfcgame.app.MainActivity
+import com.nfcgame.app.R
+import com.nfcgame.app.databinding.FragmentQueryBinding
+import com.nfcgame.app.network.HttpClient
+import com.nfcgame.app.network.NfcRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+/**
+ * 查询模式：默认界面，读取卡片 UID 并查询显示隐藏信息。
+ * 查询结果中的图片支持保存到系统相册。
+ */
+class QueryFragment : Fragment() {
+
+    private var _binding: FragmentQueryBinding? = null
+    private val binding get() = _binding!!
+
+    private val apiService by lazy { HttpClient.getApiService(requireContext()) }
+
+    /** 当前展示的图片 URL（用于保存到相册） */
+    private var currentImageUrl: String? = null
+
+    /** Android 9 及以下保存图片需要存储权限 */
+    private val requestStoragePermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                doSaveImage()
+            } else {
+                Toast.makeText(requireContext(), "未授予存储权限，无法保存图片", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
+    ): View {
+        _binding = FragmentQueryBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        val helper = (requireActivity() as MainActivity).nfcHelper
+        helper.onUidRead = { uid -> onUidRead(uid) }
+
+        // 保存图片按钮
+        binding.btnSaveImage.setOnClickListener { onSaveImageClick() }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val helper = (requireActivity() as MainActivity).nfcHelper
+
+        when {
+            !helper.isSupported() -> showStatus(getString(R.string.nfc_not_supported), isError = true)
+            !helper.isEnabled() -> showStatus(getString(R.string.nfc_disabled), isError = true)
+            else -> {
+                showStatus(getString(R.string.query_hint))
+                helper.startReading()
+            }
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        (requireActivity() as MainActivity).nfcHelper.stopReading()
+    }
+
+    /** 读卡成功回调 */
+    private fun onUidRead(uid: String) {
+        if (_binding == null) return
+
+        // 触感反馈
+        val vibrator = ContextCompat.getSystemService(requireContext(), Vibrator::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator?.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator?.vibrate(50)
+        }
+
+        binding.tvStatus.text = getString(R.string.query_reading)
+        queryAndShow(uid)
+    }
+
+    /** 请求服务器查询并展示结果 */
+    private fun queryAndShow(uid: String) {
+        lifecycleScope.launch {
+            when (val result = NfcRepository.queryInfo(apiService, uid)) {
+                is NfcRepository.Result.Success -> {
+                    val info = result.data
+                    if (info == null) {
+                        showStatus(getString(R.string.query_not_found), isError = true)
+                    } else {
+                        showInfo(uid, info.title.orEmpty(), info.content.orEmpty(), info.imageUrl)
+                    }
+                }
+                is NfcRepository.Result.Error -> {
+                    showStatus(result.message, isError = true)
+                }
+            }
+        }
+    }
+
+    /** 展示隐藏信息 */
+    private fun showInfo(uid: String, title: String, content: String, imageUrl: String?) {
+        binding.tvStatus.text = "UID: $uid"
+        binding.tvStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.neon_cyan))
+
+        binding.tvTitle.text = title
+        binding.tvContent.text = content
+
+        val hasImage = !imageUrl.isNullOrBlank()
+        currentImageUrl = imageUrl?.takeIf { it.isNotBlank() }
+
+        if (hasImage) {
+            binding.ivImage.visibility = View.VISIBLE
+            binding.btnSaveImage.visibility = View.VISIBLE
+            Glide.with(this)
+                .load(imageUrl)
+                .placeholder(R.drawable.bg_neon_card)
+                .error(R.drawable.bg_neon_card)
+                .into(binding.ivImage)
+        } else {
+            binding.ivImage.visibility = View.GONE
+            binding.btnSaveImage.visibility = View.GONE
+        }
+
+        binding.cardResult.visibility = View.VISIBLE
+    }
+
+    /** 保存按钮点击：Android 9 及以下先请求权限 */
+    private fun onSaveImageClick() {
+        if (currentImageUrl.isNullOrBlank()) return
+
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+            val granted = ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                requestStoragePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                return
+            }
+        }
+        doSaveImage()
+    }
+
+    /** 执行保存 */
+    private fun doSaveImage() {
+        val url = currentImageUrl ?: return
+        binding.tvStatus.text = getString(R.string.query_saving_image)
+
+        lifecycleScope.launch {
+            val ok = withContext(Dispatchers.IO) { saveImageToGallery(url) }
+            if (ok) {
+                binding.tvStatus.text = getString(R.string.query_image_saved)
+                Toast.makeText(requireContext(), R.string.query_image_saved, Toast.LENGTH_SHORT).show()
+            } else {
+                binding.tvStatus.text = getString(R.string.query_image_save_failed)
+                Toast.makeText(requireContext(), R.string.query_image_save_failed, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /**
+     * 将图片保存到系统相册（在 IO 线程执行）。
+     * Android 10+ 走 MediaStore（免权限），Android 9 及以下走公共 Pictures 目录。
+     */
+    private fun saveImageToGallery(url: String): Boolean {
+        return try {
+            // 用 Glide 下载图片到缓存文件（复用已加载的缓存）
+            val file = Glide.with(this).asFile().load(url).submit().get()
+
+            val mime = mimeFromUrl(url)
+            val ext = extFromMime(mime)
+
+            val values = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, "nfc_${System.currentTimeMillis()}.$ext")
+                put(MediaStore.Images.Media.MIME_TYPE, mime)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/NFC")
+                    put(MediaStore.Images.Media.IS_PENDING, 1)
+                }
+            }
+
+            val resolver = requireContext().contentResolver
+            val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            } else {
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            }
+
+            val uri = resolver.insert(collection, values) ?: return false
+            resolver.openOutputStream(uri)?.use { out ->
+                file.inputStream().use { it.copyTo(out) }
+            } ?: return false
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                values.clear()
+                values.put(MediaStore.Images.Media.IS_PENDING, 0)
+                resolver.update(uri, values, null, null)
+            }
+            true
+        } catch (e: Exception) {
+            android.util.Log.w("QueryFragment", "保存图片失败", e)
+            false
+        }
+    }
+
+    /** 根据 URL 推断 MIME 类型 */
+    private fun mimeFromUrl(url: String): String {
+        val lower = url.lowercase()
+        return when {
+            lower.contains(".png") -> "image/png"
+            lower.contains(".gif") -> "image/gif"
+            lower.contains(".webp") -> "image/webp"
+            else -> "image/jpeg"
+        }
+    }
+
+    /** 根据 MIME 推断扩展名 */
+    private fun extFromMime(mime: String): String = mime.substringAfter("/", "jpg")
+
+    /** 显示状态提示 */
+    private fun showStatus(text: String, isError: Boolean = false) {
+        binding.tvStatus.text = text
+        binding.tvStatus.setTextColor(
+            ContextCompat.getColor(
+                requireContext(),
+                if (isError) R.color.error_red else R.color.neon_green,
+            )
+        )
+        binding.cardResult.visibility = View.GONE
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+}

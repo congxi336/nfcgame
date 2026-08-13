@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 主按钮背景：青绿实心 + 圆角 + 按压水波 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_enabled="false">
+        <shape>
+            <solid android:color="@color/line_dim" />
+            <corners android:radius="@dimen/corner_md" />
+        </shape>
+    </item>
+    <item>
+        <ripple android:color="@color/accent_ripple">
+            <item>
+                <shape>
+                    <solid android:color="@color/neon_green" />
+                    <corners android:radius="@dimen/corner_md" />
+                </shape>
+            </item>
+        </ripple>
+    </item>
+</selector>

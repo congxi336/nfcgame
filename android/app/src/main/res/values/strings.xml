@@ -1,0 +1,41 @@
+<resources>
+    <string name="app_name">NFC 秘密情报</string>
+
+    <!-- 查询模式 -->
+    <string name="query_hint">请触碰 NFC 卡片</string>
+    <string name="query_scanning">等待读取卡片…</string>
+    <string name="query_reading">正在读取卡片…</string>
+    <string name="query_not_found">未找到该卡片对应的信息</string>
+    <string name="query_network_error">网络连接失败，请检查网络</string>
+    <string name="query_server_error">服务器错误，请稍后再试</string>
+    <string name="query_empty_image">（无图片）</string>
+    <string name="query_save_image">保存图片到相册</string>
+    <string name="query_image_saved">图片已保存到相册</string>
+    <string name="query_image_save_failed">图片保存失败</string>
+    <string name="query_saving_image">正在保存图片…</string>
+
+    <!-- 录入模式 -->
+    <string name="enroll_title">录入模式</string>
+    <string name="enroll_tap_card">触碰读卡</string>
+    <string name="enroll_uid_hint">卡片 UID（触碰后自动填入）</string>
+    <string name="enroll_title_hint">标题</string>
+    <string name="enroll_content_hint">内容文字</string>
+    <string name="enroll_image_hint">图片链接（可选）</string>
+    <string name="enroll_pick_image">从相册选择图片</string>
+    <string name="enroll_image_uploaded">图片上传成功</string>
+    <string name="enroll_save">保存到服务器</string>
+    <string name="enroll_success">保存成功</string>
+    <string name="enroll_need_card">请先触碰卡片获取 UID</string>
+    <string name="enroll_need_fields">请填写标题和内容</string>
+
+    <!-- 隐私提示 -->
+    <string name="privacy_title">隐私提示</string>
+    <string name="privacy_message">本应用仅读取公交卡/NFC卡的 UID（卡片唯一标识），用于游戏/娱乐用途。\n\n我们不会读取卡内余额、交易记录等任何敏感数据，请放心使用。</string>
+    <string name="privacy_agree">我知道了</string>
+
+    <!-- 通用 -->
+    <string name="nfc_not_supported">此设备不支持 NFC</string>
+    <string name="nfc_disabled">NFC 未开启，请在系统设置中开启</string>
+    <string name="tab_query">查询</string>
+    <string name="tab_enroll">录入</string>
+</resources>

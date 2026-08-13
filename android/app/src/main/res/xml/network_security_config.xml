@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 网络安全配置：
+     服务器使用自签名证书，这里同时信任系统 CA 与内置的自签名证书（res/raw/server_cert.pem），
+     作为双保险。即便 OkHttp 层未自定义 TrustManager，系统层面也能完成证书校验。 -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/server_cert" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

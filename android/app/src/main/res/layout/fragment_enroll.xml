@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/enroll_title"
+            android:textColor="@color/neon_green"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <!-- 触碰读卡按钮 -->
+        <Button
+            android:id="@+id/btn_tap_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/bg_btn_neon"
+            android:text="@string/enroll_tap_card"
+            android:textColor="@color/neon_green"
+            android:textAllCaps="false" />
+
+        <!-- UID 输入框（只读，触碰后自动填入） -->
+        <EditText
+            android:id="@+id/et_uid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_input"
+            android:hint="@string/enroll_uid_hint"
+            android:textColorHint="@color/text_dim"
+            android:textColor="@color/neon_cyan"
+            android:inputType="text"
+            android:focusable="false"
+            android:padding="16dp"
+            android:textSize="16sp"
+            android:typeface="monospace" />
+
+        <!-- 标题输入 -->
+        <EditText
+            android:id="@+id/et_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_input"
+            android:hint="@string/enroll_title_hint"
+            android:textColorHint="@color/text_dim"
+            android:textColor="@color/text_primary"
+            android:inputType="text"
+            android:maxLines="1"
+            android:padding="16dp"
+            android:textSize="16sp" />
+
+        <!-- 内容输入 -->
+        <EditText
+            android:id="@+id/et_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_input"
+            android:hint="@string/enroll_content_hint"
+            android:textColorHint="@color/text_dim"
+            android:textColor="@color/text_primary"
+            android:inputType="textMultiLine"
+            android:minLines="3"
+            android:gravity="top"
+            android:padding="16dp"
+            android:textSize="16sp" />
+
+        <!-- 图片：从相册选择 -->
+        <Button
+            android:id="@+id/btn_pick_image"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_btn_neon"
+            android:text="@string/enroll_pick_image"
+            android:textColor="@color/neon_cyan"
+            android:textAllCaps="false" />
+
+        <!-- 图片预览（选图后显示） -->
+        <ImageView
+            android:id="@+id/iv_preview"
+            android:layout_width="match_parent"
+            android:layout_height="180dp"
+            android:layout_marginTop="12dp"
+            android:scaleType="centerCrop"
+            android:contentDescription="@string/enroll_image_hint"
+            android:visibility="gone" />
+
+        <!-- 图片链接输入（上传后自动填入，也可手动填写） -->
+        <EditText
+            android:id="@+id/et_image_url"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_input"
+            android:hint="@string/enroll_image_hint"
+            android:textColorHint="@color/text_dim"
+            android:textColor="@color/text_primary"
+            android:inputType="textUri"
+            android:maxLines="1"
+            android:padding="16dp"
+            android:textSize="16sp" />
+
+        <!-- 保存按钮 -->
+        <Button
+            android:id="@+id/btn_save"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:background="@drawable/bg_btn_primary"
+            android:text="@string/enroll_save"
+            android:textColor="@color/bg_dark"
+            android:textAllCaps="false" />
+
+        <!-- 状态提示 -->
+        <TextView
+            android:id="@+id/tv_enroll_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp" />
+    </LinearLayout>
+</ScrollView>

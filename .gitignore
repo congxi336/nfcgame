@@ -1,0 +1,10 @@
+# WorkBuddy 项目数据（不入库）
+.workbuddy/
+
+# 构建产物
+*.apk
+*.aab
+
+# 系统文件
+.DS_Store
+Thumbs.db

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 应用主题：深色简约 · 青绿强调 -->
+    <style name="Theme.NfcGame" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- 系统栏：深色沉浸 -->
+        <item name="android:statusBarColor">@color/bg_dark</item>
+        <item name="android:navigationBarColor">@color/bg_panel</item>
+        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+
+        <!-- Material 色彩映射 -->
+        <item name="colorPrimary">@color/neon_green</item>
+        <item name="colorPrimaryVariant">@color/neon_green_dim</item>
+        <item name="colorSecondary">@color/neon_cyan</item>
+        <item name="colorOnPrimary">@color/bg_dark</item>
+        <item name="colorOnSecondary">@color/bg_dark</item>
+        <item name="colorSurface">@color/bg_panel</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="android:colorBackground">@color/bg_dark</item>
+        <item name="colorOnBackground">@color/text_primary</item>
+        <item name="colorError">@color/error_red</item>
+        <item name="colorOnError">@color/bg_dark</item>
+
+        <!-- 文字 -->
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:colorAccent">@color/neon_green</item>
+    </style>
+
+    <!-- 简约卡片 -->
+    <style name="NeonCard">
+        <item name="android:background">@drawable/bg_neon_card</item>
+    </style>
+</resources>
