@@ -1,7 +1,9 @@
 package com.nfcgame.app.ui.enroll
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -69,14 +71,22 @@ class EnrollFragment : Fragment() {
             Toast.makeText(requireContext(), "已读取卡片: $uid", Toast.LENGTH_SHORT).show()
         }
 
-        // 触碰读卡按钮
+        // 开启 NFC：未开启时跳系统设置，已开启则提示就绪
         binding.btnTapCard.setOnClickListener {
-            if (!helper.isSupported()) {
-                Toast.makeText(requireContext(), R.string.nfc_not_supported, Toast.LENGTH_SHORT).show()
-            } else if (!helper.isEnabled()) {
-                Toast.makeText(requireContext(), R.string.nfc_disabled, Toast.LENGTH_SHORT).show()
-            } else {
-                binding.tvEnrollStatus.text = "请将卡片贴近手机背面…"
+            when {
+                !helper.isSupported() -> {
+                    Toast.makeText(requireContext(), R.string.nfc_not_supported, Toast.LENGTH_SHORT).show()
+                }
+                !helper.isEnabled() -> {
+                    try {
+                        startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
+                    } catch (e: Exception) {
+                        Toast.makeText(requireContext(), R.string.nfc_disabled, Toast.LENGTH_SHORT).show()
+                    }
+                }
+                else -> {
+                    binding.tvEnrollStatus.text = "NFC 已开启，请将卡片贴近手机背面…"
+                }
             }
         }
 
@@ -118,8 +128,8 @@ class EnrollFragment : Fragment() {
         availableKeys = KeyManager.getKeys(requireContext())
         val labels = availableKeys.map { it.remark.ifBlank { "密钥 ${it.key.take(4)}…" } } +
             listOf(getString(R.string.enroll_manual_key))
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, labels)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        val adapter = ArrayAdapter(requireContext(), R.layout.item_spinner, labels)
+        adapter.setDropDownViewResource(R.layout.item_spinner_dropdown)
         binding.spKey.adapter = adapter
     }
 

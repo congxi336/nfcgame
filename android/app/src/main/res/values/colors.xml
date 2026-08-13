@@ -14,8 +14,8 @@
 
     <!-- 文字 -->
     <color name="text_primary">#E8EEF2</color>     <!-- 主文字 -->
-    <color name="text_secondary">#9AA7B0</color>   <!-- 次要文字 -->
-    <color name="text_dim">#6B7880</color>         <!-- 弱化 / 占位文字 -->
+    <color name="text_secondary">#A6B2BB</color>   <!-- 次要文字（≥7:1 对比度） -->
+    <color name="text_dim">#87949E</color>         <!-- 弱化 / 占位文字（≥5:1 对比度） -->
     <color name="line_dim">#2A343C</color>         <!-- 分割线 / 描边 -->
 
     <!-- 语义色 -->
@@ -23,4 +23,5 @@
 
     <!-- 交互反馈 -->
     <color name="accent_ripple">#1F2DD4BF</color>  <!-- 按压水波（青绿 12% 透明） -->
+    <color name="btn_outline_fill">#142DD4BF</color>  <!-- 描边按钮底色（青绿 8% 透明，增强按钮辨识度） -->
 </resources>

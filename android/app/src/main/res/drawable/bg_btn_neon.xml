@@ -1,21 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 次按钮背景：描边 + 圆角 + 按压水波 -->
+<!-- 次按钮背景：淡青绿底 + 亮青绿描边 + 圆角 + 按压水波 -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_enabled="false">
         <shape>
             <solid android:color="@color/line_dim" />
             <corners android:radius="@dimen/corner_md" />
+            <stroke
+                android:width="1dp"
+                android:color="@color/text_dim" />
         </shape>
     </item>
     <item>
         <ripple android:color="@color/accent_ripple">
             <item>
                 <shape>
-                    <solid android:color="@color/bg_panel" />
+                    <solid android:color="@color/btn_outline_fill" />
                     <corners android:radius="@dimen/corner_md" />
                     <stroke
-                        android:width="1dp"
-                        android:color="@color/neon_green_dim" />
+                        android:width="1.5dp"
+                        android:color="@color/neon_green" />
                 </shape>
             </item>
         </ripple>

@@ -100,7 +100,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:background="@drawable/bg_input" />
+                android:background="@drawable/bg_input"
+                android:popupBackground="@color/bg_card" />
 
             <EditText
                 android:id="@+id/et_manual_key"
@@ -171,7 +172,7 @@
             android:layout_marginTop="24dp"
             android:background="@drawable/bg_btn_primary"
             android:text="@string/enroll_save"
-            android:textColor="@color/bg_dark"
+            android:textColor="@color/btn_primary_text"
             android:textAllCaps="false" />
 
         <!-- 状态提示 -->

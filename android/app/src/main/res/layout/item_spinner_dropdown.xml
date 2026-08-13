@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Spinner 下拉列表项（深色主题适配：深底亮字） -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/text1"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/bg_card"
+    android:ellipsize="end"
+    android:gravity="center_vertical"
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp"
+    android:singleLine="true"
+    android:textColor="@color/text_primary"
+    android:textSize="14sp" />

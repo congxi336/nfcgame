@@ -16,7 +16,7 @@
 
     <!-- 录入模式 -->
     <string name="enroll_title">录入模式</string>
-    <string name="enroll_tap_card">触碰读卡</string>
+    <string name="enroll_tap_card">开启 NFC</string>
     <string name="enroll_uid_hint">卡片 UID（触碰后自动填入）</string>
     <string name="enroll_title_hint">标题</string>
     <string name="enroll_content_hint">内容文字</string>
