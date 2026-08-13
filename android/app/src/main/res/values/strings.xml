@@ -30,7 +30,7 @@
 
     <!-- 隐私提示 -->
     <string name="privacy_title">隐私提示</string>
-    <string name="privacy_message">本应用仅读取公交卡/NFC卡的 UID（卡片唯一标识），用于游戏/娱乐用途。\n\n我们不会读取卡内余额、交易记录等任何敏感数据，请放心使用。</string>
+    <string name="privacy_message">本应用仅读取公交卡/NFC 卡的 UID（卡片唯一标识），不读取、不存储卡内任何数据（余额、交易记录等）。</string>
     <string name="privacy_agree">我知道了</string>
 
     <!-- 通用 -->
