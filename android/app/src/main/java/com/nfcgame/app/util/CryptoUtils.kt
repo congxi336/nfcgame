@@ -75,4 +75,43 @@ object CryptoUtils {
     fun looksEncrypted(s: String): Boolean {
         return s.startsWith("{") && s.contains("\"v\"")
     }
+
+    /**
+     * 加密后的完整信息载荷（标题 + 内容 + 图片）。
+     */
+    data class Payload(
+        val title: String,
+        val content: String,
+        val imageUrl: String,
+    )
+
+    /**
+     * 将标题、内容、图片打包后整体加密，返回密文 JSON。
+     * 这样三者在服务器上都是密文，无法明文查看。
+     */
+    fun encryptPayload(title: String, content: String, imageUrl: String, key: String): String {
+        val payload = JSONObject().apply {
+            put("title", title)
+            put("content", content)
+            put("image_url", imageUrl)
+        }.toString()
+        return encrypt(payload, key)
+    }
+
+    /**
+     * 解密并解析载荷，密钥错误或格式非法返回 null。
+     */
+    fun decryptPayload(ciphertext: String, key: String): Payload? {
+        val plain = decrypt(ciphertext, key) ?: return null
+        return try {
+            val json = JSONObject(plain)
+            Payload(
+                title = json.optString("title"),
+                content = json.optString("content"),
+                imageUrl = json.optString("image_url"),
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
 }

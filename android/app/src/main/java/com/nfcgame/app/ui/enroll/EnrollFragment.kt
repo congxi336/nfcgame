@@ -190,7 +190,7 @@ class EnrollFragment : Fragment() {
     private fun save() {
         val uid = currentUid ?: binding.etUid.text?.toString()?.trim().orEmpty()
         val title = binding.etTitle.text?.toString()?.trim().orEmpty()
-        var content = binding.etContent.text?.toString()?.trim().orEmpty()
+        val content = binding.etContent.text?.toString()?.trim().orEmpty()
         val imageUrl = binding.etImageUrl.text?.toString()?.trim().orEmpty()
 
         if (uid.isEmpty()) {
@@ -202,16 +202,21 @@ class EnrollFragment : Fragment() {
             return
         }
 
-        // 加密处理
+        // 加密处理：标题、内容、图片整体打包加密（三者都不明文上传）
         var encrypted = 0
         var attachKey: String? = null
+        var finalTitle = title
+        var finalContent = content
+        var finalImageUrl = imageUrl
         if (binding.swEncrypt.isChecked) {
             val key = resolveEncryptKey()
             if (key.isNullOrBlank()) {
                 Toast.makeText(requireContext(), R.string.enroll_encrypt_no_key, Toast.LENGTH_LONG).show()
                 return
             }
-            content = CryptoUtils.encrypt(content, key)
+            finalContent = CryptoUtils.encryptPayload(title, content, imageUrl, key)
+            finalTitle = getString(R.string.enroll_encrypted_placeholder)
+            finalImageUrl = ""
             encrypted = 1
             if (binding.cbAttachKey.isChecked) {
                 attachKey = key
@@ -225,9 +230,9 @@ class EnrollFragment : Fragment() {
             val result = NfcRepository.saveInfo(
                 api = apiService,
                 uid = uid,
-                title = title,
-                content = content,
-                imageUrl = imageUrl,
+                title = finalTitle,
+                content = finalContent,
+                imageUrl = finalImageUrl,
                 encrypted = encrypted,
                 attachKey = attachKey,
             )

@@ -143,29 +143,40 @@ class QueryFragment : Fragment() {
         encrypted: Int,
         attachKey: String?,
     ) {
-        binding.tvTitle.text = title
-
-        // 解密处理
         if (encrypted == 1) {
             val result = decryptContent(content, attachKey)
-            val plaintext = result.plaintext
-            if (plaintext != null) {
-                binding.tvContent.text = plaintext
-                binding.tvStatus.text = getString(R.string.query_decrypted_by, result.keyLabel)
-                binding.tvStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.neon_cyan))
+            val payload = result.payload
+            if (payload != null) {
+                renderInfo(uid, payload.title, payload.content, payload.imageUrl, result.keyLabel)
             } else {
+                // 解密失败：标题、内容、图片全部不显示明文
+                binding.tvTitle.text = title // 服务器上的占位符「🔒 已加密」
                 binding.tvContent.text = getString(R.string.query_encrypted)
                 binding.tvStatus.text = getString(R.string.query_encrypted)
                 binding.tvStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.error_red))
+                binding.ivImage.visibility = View.GONE
+                binding.btnSaveImage.visibility = View.GONE
+                currentImageUrl = null
+                binding.cardResult.visibility = View.VISIBLE
             }
         } else {
-            binding.tvContent.text = content
-            binding.tvStatus.text = "UID: $uid"
-            binding.tvStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.neon_cyan))
+            renderInfo(uid, title, content, imageUrl.orEmpty(), null)
         }
+    }
 
-        val hasImage = !imageUrl.isNullOrBlank()
-        currentImageUrl = imageUrl?.takeIf { it.isNotBlank() }
+    /** 渲染明文信息（解密后，或本来未加密） */
+    private fun renderInfo(uid: String, title: String, content: String, imageUrl: String, keyLabel: String?) {
+        binding.tvTitle.text = title
+        binding.tvContent.text = content
+        binding.tvStatus.text = if (keyLabel != null) {
+            getString(R.string.query_decrypted_by, keyLabel)
+        } else {
+            "UID: $uid"
+        }
+        binding.tvStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.neon_cyan))
+
+        val hasImage = imageUrl.isNotBlank()
+        currentImageUrl = imageUrl.takeIf { it.isNotBlank() }
 
         if (hasImage) {
             binding.ivImage.visibility = View.VISIBLE
@@ -185,10 +196,10 @@ class QueryFragment : Fragment() {
 
     /**
      * 解密结果。
-     * @param plaintext 解密成功后的明文，null 表示解密失败
+     * @param payload 解密后的完整载荷（标题+内容+图片），null 表示解密失败
      * @param keyLabel 命中的密钥标识（备注或「附加密钥」）
      */
-    private data class DecryptResult(val plaintext: String?, val keyLabel: String?)
+    private data class DecryptResult(val payload: CryptoUtils.Payload?, val keyLabel: String?)
 
     /**
      * 按优先级解密：附加密钥 → 本地密钥依次尝试 → 失败。
@@ -196,14 +207,14 @@ class QueryFragment : Fragment() {
     private fun decryptContent(ciphertext: String, attachKey: String?): DecryptResult {
         // 1. 优先附加密钥
         if (!attachKey.isNullOrBlank()) {
-            CryptoUtils.decrypt(ciphertext, attachKey)?.let {
+            CryptoUtils.decryptPayload(ciphertext, attachKey)?.let {
                 return DecryptResult(it, getString(R.string.enroll_encrypt_attach_short))
             }
         }
         // 2. 本地所有密钥依次尝试
         val keys = KeyManager.getKeys(requireContext())
         for (entry in keys) {
-            CryptoUtils.decrypt(ciphertext, entry.key)?.let {
+            CryptoUtils.decryptPayload(ciphertext, entry.key)?.let {
                 return DecryptResult(it, entry.remark.ifBlank { "密钥 ${entry.key.take(4)}…" })
             }
         }
