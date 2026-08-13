@@ -23,6 +23,8 @@ import com.nfcgame.app.R
 import com.nfcgame.app.databinding.FragmentQueryBinding
 import com.nfcgame.app.network.HttpClient
 import com.nfcgame.app.network.NfcRepository
+import com.nfcgame.app.util.CryptoUtils
+import com.nfcgame.app.util.KeyManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -115,7 +117,14 @@ class QueryFragment : Fragment() {
                     if (info == null) {
                         showStatus(getString(R.string.query_not_found), isError = true)
                     } else {
-                        showInfo(uid, info.title.orEmpty(), info.content.orEmpty(), info.imageUrl)
+                        showInfo(
+                            uid,
+                            info.title.orEmpty(),
+                            info.content.orEmpty(),
+                            info.imageUrl,
+                            info.encrypted ?: 0,
+                            info.attachKey,
+                        )
                     }
                 }
                 is NfcRepository.Result.Error -> {
@@ -125,13 +134,35 @@ class QueryFragment : Fragment() {
         }
     }
 
-    /** 展示隐藏信息 */
-    private fun showInfo(uid: String, title: String, content: String, imageUrl: String?) {
-        binding.tvStatus.text = "UID: $uid"
-        binding.tvStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.neon_cyan))
-
+    /** 展示隐藏信息（含解密处理） */
+    private fun showInfo(
+        uid: String,
+        title: String,
+        content: String,
+        imageUrl: String?,
+        encrypted: Int,
+        attachKey: String?,
+    ) {
         binding.tvTitle.text = title
-        binding.tvContent.text = content
+
+        // 解密处理
+        if (encrypted == 1) {
+            val result = decryptContent(content, attachKey)
+            val plaintext = result.plaintext
+            if (plaintext != null) {
+                binding.tvContent.text = plaintext
+                binding.tvStatus.text = getString(R.string.query_decrypted_by, result.keyLabel)
+                binding.tvStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.neon_cyan))
+            } else {
+                binding.tvContent.text = getString(R.string.query_encrypted)
+                binding.tvStatus.text = getString(R.string.query_encrypted)
+                binding.tvStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.error_red))
+            }
+        } else {
+            binding.tvContent.text = content
+            binding.tvStatus.text = "UID: $uid"
+            binding.tvStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.neon_cyan))
+        }
 
         val hasImage = !imageUrl.isNullOrBlank()
         currentImageUrl = imageUrl?.takeIf { it.isNotBlank() }
@@ -150,6 +181,34 @@ class QueryFragment : Fragment() {
         }
 
         binding.cardResult.visibility = View.VISIBLE
+    }
+
+    /**
+     * 解密结果。
+     * @param plaintext 解密成功后的明文，null 表示解密失败
+     * @param keyLabel 命中的密钥标识（备注或「附加密钥」）
+     */
+    private data class DecryptResult(val plaintext: String?, val keyLabel: String?)
+
+    /**
+     * 按优先级解密：附加密钥 → 本地密钥依次尝试 → 失败。
+     */
+    private fun decryptContent(ciphertext: String, attachKey: String?): DecryptResult {
+        // 1. 优先附加密钥
+        if (!attachKey.isNullOrBlank()) {
+            CryptoUtils.decrypt(ciphertext, attachKey)?.let {
+                return DecryptResult(it, getString(R.string.enroll_encrypt_attach_short))
+            }
+        }
+        // 2. 本地所有密钥依次尝试
+        val keys = KeyManager.getKeys(requireContext())
+        for (entry in keys) {
+            CryptoUtils.decrypt(ciphertext, entry.key)?.let {
+                return DecryptResult(it, entry.remark.ifBlank { "密钥 ${entry.key.take(4)}…" })
+            }
+        }
+        // 3. 全部失败
+        return DecryptResult(null, null)
     }
 
     /** 保存按钮点击：Android 9 及以下先请求权限 */

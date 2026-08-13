@@ -2,13 +2,13 @@ package com.nfcgame.app.ui.enroll
 
 import android.net.Uri
 import android.os.Bundle
-import android.os.Vibrator
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.nfcgame.app.BuildConfig
@@ -17,6 +17,9 @@ import com.nfcgame.app.R
 import com.nfcgame.app.databinding.FragmentEnrollBinding
 import com.nfcgame.app.network.HttpClient
 import com.nfcgame.app.network.NfcRepository
+import com.nfcgame.app.util.CryptoUtils
+import com.nfcgame.app.util.KeyEntry
+import com.nfcgame.app.util.KeyManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -25,8 +28,8 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
- * 录入模式：读取卡片 UID + 手动输入标题/内容/图片，保存到服务器。
- * 图片支持两种方式：手动填 URL，或从相册选择后自动上传。
+ * 录入模式：读取卡片 UID + 输入标题/内容/图片，保存到服务器。
+ * 支持加密传输：开启后用密钥对内容做 AES-256-GCM 加密，可选择性附加密钥。
  */
 class EnrollFragment : Fragment() {
 
@@ -37,6 +40,9 @@ class EnrollFragment : Fragment() {
 
     /** 当前读取到的 UID（触碰后填入） */
     private var currentUid: String? = null
+
+    /** 本地可选密钥列表（加密用） */
+    private var availableKeys: List<KeyEntry> = emptyList()
 
     /** 从相册选择图片（返回 URI） */
     private val imagePicker =
@@ -79,10 +85,26 @@ class EnrollFragment : Fragment() {
 
         // 保存按钮
         binding.btnSave.setOnClickListener { save() }
+
+        // 加密开关：显示/隐藏加密区域
+        binding.swEncrypt.setOnCheckedChangeListener { _, checked ->
+            binding.llEncryptArea.visibility = if (checked) View.VISIBLE else View.GONE
+        }
+
+        // 密钥 Spinner 选择：选中「手动输入」时显示输入框
+        binding.spKey.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val isManual = position >= availableKeys.size
+                binding.etManualKey.visibility = if (isManual) View.VISIBLE else View.GONE
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
     }
 
     override fun onResume() {
         super.onResume()
+        loadKeysToSpinner()
         (requireActivity() as MainActivity).nfcHelper.startReading()
     }
 
@@ -91,9 +113,28 @@ class EnrollFragment : Fragment() {
         (requireActivity() as MainActivity).nfcHelper.stopReading()
     }
 
+    /** 加载本地密钥到 Spinner（末尾追加「手动输入」项） */
+    private fun loadKeysToSpinner() {
+        availableKeys = KeyManager.getKeys(requireContext())
+        val labels = availableKeys.map { it.remark.ifBlank { "密钥 ${it.key.take(4)}…" } } +
+            listOf(getString(R.string.enroll_manual_key))
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, labels)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spKey.adapter = adapter
+    }
+
+    /** 解析当前选中的加密密钥（已有密钥或手动输入） */
+    private fun resolveEncryptKey(): String? {
+        val pos = binding.spKey.selectedItemPosition
+        return if (pos >= 0 && pos < availableKeys.size) {
+            availableKeys[pos].key
+        } else {
+            binding.etManualKey.text?.toString()?.trim()
+        }
+    }
+
     /** 相册选图回调：预览 + 上传 */
     private fun onImagePicked(uri: Uri) {
-        // 显示本地预览
         binding.ivPreview.setImageURI(uri)
         binding.ivPreview.visibility = View.VISIBLE
         binding.tvEnrollStatus.text = "正在上传图片…"
@@ -139,7 +180,7 @@ class EnrollFragment : Fragment() {
     private fun save() {
         val uid = currentUid ?: binding.etUid.text?.toString()?.trim().orEmpty()
         val title = binding.etTitle.text?.toString()?.trim().orEmpty()
-        val content = binding.etContent.text?.toString()?.trim().orEmpty()
+        var content = binding.etContent.text?.toString()?.trim().orEmpty()
         val imageUrl = binding.etImageUrl.text?.toString()?.trim().orEmpty()
 
         if (uid.isEmpty()) {
@@ -149,6 +190,22 @@ class EnrollFragment : Fragment() {
         if (title.isEmpty() || content.isEmpty()) {
             Toast.makeText(requireContext(), R.string.enroll_need_fields, Toast.LENGTH_SHORT).show()
             return
+        }
+
+        // 加密处理
+        var encrypted = 0
+        var attachKey: String? = null
+        if (binding.swEncrypt.isChecked) {
+            val key = resolveEncryptKey()
+            if (key.isNullOrBlank()) {
+                Toast.makeText(requireContext(), R.string.enroll_encrypt_no_key, Toast.LENGTH_LONG).show()
+                return
+            }
+            content = CryptoUtils.encrypt(content, key)
+            encrypted = 1
+            if (binding.cbAttachKey.isChecked) {
+                attachKey = key
+            }
         }
 
         binding.btnSave.isEnabled = false
@@ -161,6 +218,8 @@ class EnrollFragment : Fragment() {
                 title = title,
                 content = content,
                 imageUrl = imageUrl,
+                encrypted = encrypted,
+                attachKey = attachKey,
             )
             when (result) {
                 is NfcRepository.Result.Success -> {
@@ -186,6 +245,9 @@ class EnrollFragment : Fragment() {
         binding.etImageUrl.text?.clear()
         binding.ivPreview.setImageDrawable(null)
         binding.ivPreview.visibility = View.GONE
+        binding.swEncrypt.isChecked = false
+        binding.cbAttachKey.isChecked = false
+        binding.etManualKey.text?.clear()
     }
 
     override fun onDestroyView() {

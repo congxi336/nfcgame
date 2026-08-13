@@ -31,6 +31,8 @@ router.get('/', (req, res) => {
       title: row.title,
       content: row.content,
       image_url: row.image_url || '',
+      encrypted: row.encrypted ? 1 : 0,
+      attach_key: row.attach_key || '',
     },
   }));
 });
@@ -38,7 +40,8 @@ router.get('/', (req, res) => {
 /**
  * POST /api/info
  * 新增或更新一条信息。
- * 请求体：{uid, title, content, image_url?}
+ * 请求体：{uid, title, content, image_url?, encrypted?, attach_key?}
+ * encrypted: 0/1 表示 content 是否加密；attach_key: 可选附加密钥。
  * uid 已存在则更新，否则插入。
  */
 router.post('/', (req, res) => {
@@ -52,6 +55,8 @@ router.post('/', (req, res) => {
   const title = typeof body.title === 'string' ? body.title.trim() : '';
   const content = typeof body.content === 'string' ? body.content.trim() : '';
   const image_url = body.image_url;
+  const encrypted = body.encrypted ? 1 : 0;
+  const attach_key = typeof body.attach_key === 'string' ? body.attach_key.trim() : '';
 
   if (!title || !content) {
     return res.status(400).json(fail(400, 'title 和 content 均为必填字段'));
@@ -60,7 +65,7 @@ router.post('/', (req, res) => {
     return res.status(400).json(fail(400, 'image_url 必须为合法的 http/https 链接'));
   }
 
-  upsertInfo({ uid, title, content, image_url: image_url || null });
+  upsertInfo({ uid, title, content, image_url: image_url || null, encrypted, attach_key });
   res.json(ok({ message: '保存成功' }));
 });
 

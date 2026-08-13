@@ -18,6 +18,8 @@ data class InfoData(
     @SerializedName("title") val title: String? = null,
     @SerializedName("content") val content: String? = null,
     @SerializedName("image_url") val imageUrl: String? = null,
+    @SerializedName("encrypted") val encrypted: Int? = 0,
+    @SerializedName("attach_key") val attachKey: String? = null,
 )
 
 /** 保存请求体 */
@@ -26,6 +28,8 @@ data class SaveRequest(
     @SerializedName("title") val title: String,
     @SerializedName("content") val content: String,
     @SerializedName("image_url") val imageUrl: String? = null,
+    @SerializedName("encrypted") val encrypted: Int = 0,
+    @SerializedName("attach_key") val attachKey: String? = null,
 )
 
 /** 通用响应（保存/删除等返回 code + message） */

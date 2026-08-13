@@ -33,7 +33,7 @@ object NfcRepository {
     }
 
     /**
-     * 保存信息。
+     * 保存信息。encrypted 为 1 表示 content 已加密，attachKey 为可选附加密钥。
      */
     suspend fun saveInfo(
         api: ApiService,
@@ -41,6 +41,8 @@ object NfcRepository {
         title: String,
         content: String,
         imageUrl: String?,
+        encrypted: Int = 0,
+        attachKey: String? = null,
     ): Result<Unit> {
         return try {
             val resp = api.saveInfo(
@@ -49,6 +51,8 @@ object NfcRepository {
                     title = title,
                     content = content,
                     imageUrl = imageUrl?.takeIf { it.isNotBlank() },
+                    encrypted = encrypted,
+                    attachKey = attachKey?.takeIf { it.isNotBlank() },
                 )
             )
             if (resp.code == 200) Result.Success(Unit)

@@ -21,7 +21,7 @@ db.pragma('journal_mode = WAL'); // 提升并发读写性能
 
 /**
  * 建表语句：uid 为主键（大写十六进制字符串）。
- * created_at / updated_at 使用 SQLite 默认当前时间（本地时区）。
+ * encrypted 标志内容是否加密（0/1），attach_key 为可选附加密钥。
  */
 const CREATE_TABLE_SQL = `
   CREATE TABLE IF NOT EXISTS cards (
@@ -29,6 +29,8 @@ const CREATE_TABLE_SQL = `
     title      TEXT NOT NULL DEFAULT '',
     content    TEXT NOT NULL DEFAULT '',
     image_url  TEXT,
+    encrypted  INTEGER NOT NULL DEFAULT 0,
+    attach_key TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
   );
@@ -38,32 +40,53 @@ const CREATE_TABLE_SQL = `
 db.exec(CREATE_TABLE_SQL);
 
 /**
+ * 轻量迁移：为旧库补充缺失的列（仅开发/升级用，幂等）。
+ */
+function ensureColumn(table, column, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  }
+}
+ensureColumn('cards', 'encrypted', 'encrypted INTEGER NOT NULL DEFAULT 0');
+ensureColumn('cards', 'attach_key', 'attach_key TEXT');
+
+/**
  * 查询指定 UID 的信息。
  * @param {string} uid 大写十六进制 UID
  * @returns {object|null} 命中返回行对象，否则返回 null
  */
 function getInfo(uid) {
   const row = db
-    .prepare('SELECT uid, title, content, image_url, created_at, updated_at FROM cards WHERE uid = ?')
+    .prepare('SELECT uid, title, content, image_url, encrypted, attach_key, created_at, updated_at FROM cards WHERE uid = ?')
     .get(uid);
   return row || null;
 }
 
 /**
  * 新增或更新一条信息（uid 已存在则更新）。
- * @param {object} info { uid, title, content, image_url }
+ * @param {object} info { uid, title, content, image_url, encrypted, attach_key }
  * @returns {object} 操作后的行对象
  */
-function upsertInfo({ uid, title, content, image_url }) {
+function upsertInfo({ uid, title, content, image_url, encrypted, attach_key }) {
   db.prepare(
-    `INSERT INTO cards (uid, title, content, image_url)
-     VALUES (@uid, @title, @content, @image_url)
+    `INSERT INTO cards (uid, title, content, image_url, encrypted, attach_key)
+     VALUES (@uid, @title, @content, @image_url, @encrypted, @attach_key)
      ON CONFLICT(uid) DO UPDATE SET
-       title     = excluded.title,
-       content   = excluded.content,
-       image_url = excluded.image_url,
+       title      = excluded.title,
+       content    = excluded.content,
+       image_url  = excluded.image_url,
+       encrypted  = excluded.encrypted,
+       attach_key = excluded.attach_key,
        updated_at = datetime('now','localtime')`
-  ).run({ uid, title, content, image_url: image_url || null });
+  ).run({
+    uid,
+    title,
+    content,
+    image_url: image_url || null,
+    encrypted: encrypted ? 1 : 0,
+    attach_key: attach_key || null,
+  });
 
   return getInfo(uid);
 }

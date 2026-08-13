@@ -9,10 +9,11 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.nfcgame.app.databinding.ActivityMainBinding
 import com.nfcgame.app.nfc.NfcHelper
 import com.nfcgame.app.ui.enroll.EnrollFragment
+import com.nfcgame.app.ui.key.KeyFragment
 import com.nfcgame.app.ui.query.QueryFragment
 
 /**
- * 主 Activity：承载查询模式与录入模式两个 Fragment，底部导航切换。
+ * 主 Activity：承载查询、录入、密钥三个 Fragment，底部导航切换。
  */
 class MainActivity : AppCompatActivity() {
 
@@ -42,6 +43,7 @@ class MainActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.nav_query -> switchTo(QueryFragment())
                 R.id.nav_enroll -> switchTo(EnrollFragment())
+                R.id.nav_key -> switchTo(KeyFragment())
             }
             true
         }
