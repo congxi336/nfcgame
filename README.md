@@ -4,6 +4,8 @@
 
 > ⚠️ 本应用仅用于游戏/娱乐用途，只读取卡片的 UID（唯一标识），不读取卡内余额、交易等任何敏感数据。
 
+> 🔧 **使用前必读**：本项目是通用模板，代码中所有 `YOUR_SERVER_IP` / `你的服务器IP` 都需要替换为你自己的服务器地址，并用 `generate-cert.sh` 重新生成证书（详见下文「证书固定」）。
+
 ---
 
 ## 目录结构
@@ -81,8 +83,8 @@ CREATE TABLE IF NOT EXISTS cards (
 cd server
 cp .env.example .env          # 按需修改端口/证书路径
 
-# 生成自签名证书（参数为服务器 IP）
-bash scripts/generate-cert.sh 121.37.119.20
+# 生成自签名证书（参数为你自己的服务器 IP 或域名）
+bash scripts/generate-cert.sh 你的服务器IP
 
 # 安装依赖并启动
 npm install
@@ -104,7 +106,7 @@ curl -k -X POST "https://127.0.0.1:2999/api/info" \
 curl -k "https://127.0.0.1:2999/api/info?uid=04A1B2C3D4E5F6"
 ```
 
-### 5. 部署到云服务器（IP: 121.37.119.20，端口 2999）
+### 5. 部署到云服务器（端口 2999）
 
 **方式 A：Docker**
 
@@ -124,7 +126,7 @@ docker run -d --name nfc-server -p 2999:2999 \
 mkdir -p /opt/nfc-game/server && cd /opt/nfc-game/server
 # 上传 package.json / src / scripts（可用 deploy/deploy.sh 或手动 scp）
 npm install --production
-bash scripts/generate-cert.sh 121.37.119.20
+bash scripts/generate-cert.sh 你的服务器IP
 cp .env.example .env
 
 # 2. 注册服务
@@ -140,7 +142,7 @@ curl -k https://127.0.0.1:2999/health
 
 ```bash
 cd server
-SERVER_IP=121.37.119.20 SERVER_USER=root bash deploy/deploy.sh
+SERVER_IP=你的服务器IP SERVER_USER=root bash deploy/deploy.sh
 ```
 
 > 注意：若未开放 2999 端口，需在服务器防火墙/安全组放行（如 `firewall-cmd --add-port=2999/tcp --permanent && firewall-cmd --reload`）。当前阶段可先忽略。
@@ -162,10 +164,10 @@ SERVER_IP=121.37.119.20 SERVER_USER=root bash deploy/deploy.sh
 
 ### 3. 连接服务器配置
 
-服务器地址在 `android/app/build.gradle` 中定义：
+服务器地址在 `android/app/build.gradle` 中定义，改成你自己的服务器 IP 或域名：
 
 ```gradle
-buildConfigField "String", "SERVER_URL", "\"https://121.37.119.20:2999\""
+buildConfigField "String", "SERVER_URL", "\"https://你的服务器IP:2999\""
 ```
 
 修改 IP 后重新构建即可。
@@ -174,9 +176,11 @@ buildConfigField "String", "SERVER_URL", "\"https://121.37.119.20:2999\""
 
 服务器使用自签名证书，安卓默认不信任。本项目通过「证书固定」解决：
 
-- 将服务器的 `server/certs/cert.pem` 复制到 `android/app/src/main/res/raw/server_cert.pem`（仓库已内置一份与脚本生成一致的证书）。
-- `network/HttpClient.kt` 会加载该证书作为唯一信任源。
-- **若你重新生成了证书，务必同步替换 `res/raw/server_cert.pem`**，否则 App 会握手失败。
+- 仓库内置的 `android/app/src/main/res/raw/server_cert.pem` 是一个**示例证书**，仅用于保证项目能正常编译，**无法连接你的真实服务器**。
+- 部署前必须做两步，让 App 与你的服务器证书一致：
+  1. 服务器上运行 `bash scripts/generate-cert.sh 你的服务器IP` 生成证书；
+  2. 把生成的 `server/certs/cert.pem` 复制到 `android/app/src/main/res/raw/server_cert.pem`，覆盖示例证书。
+- `network/HttpClient.kt` 会加载该证书作为唯一信任源，若证书不一致会握手失败。
 
 > 开发阶段若暂未放置证书，代码会回退为「信任所有证书」并在日志警告——仅用于联调，生产勿用。
 

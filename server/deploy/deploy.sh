@@ -1,19 +1,25 @@
 #!/usr/bin/env bash
 # ============================================================
 # 一键部署脚本：上传源码 → 服务器安装依赖 → 生成证书 → 启动 systemd 服务
-# 用法：bash deploy/deploy.sh
-# 可选环境变量：
-#   SERVER_IP     服务器 IP（默认 121.37.119.20）
+# 用法：SERVER_IP=<你的服务器IP> bash deploy/deploy.sh
+# 环境变量：
+#   SERVER_IP     服务器 IP（必填）
 #   SERVER_USER   登录用户（默认 root）
 #   REMOTE_DIR    远程部署目录（默认 /opt/nfc-game/server）
 #   SERVER_PASS   服务器密码（可选，填写后配合 sshpass 免交互）
 # ============================================================
 set -euo pipefail
 
-SERVER_IP="${SERVER_IP:-121.37.119.20}"
+SERVER_IP="${SERVER_IP:-}"
 SERVER_USER="${SERVER_USER:-root}"
 REMOTE_DIR="${REMOTE_DIR:-/opt/nfc-game/server}"
 SERVER_PASS="${SERVER_PASS:-}"
+
+if [ -z "$SERVER_IP" ]; then
+  echo "错误：请通过 SERVER_IP 环境变量指定服务器 IP。"
+  echo "示例：SERVER_IP=192.168.1.100 SERVER_USER=root bash deploy/deploy.sh"
+  exit 1
+fi
 
 cd "$(dirname "$0")/.."
 

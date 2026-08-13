@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 # ============================================================
 # 生成自签名 HTTPS 证书（有效期 10 年）
-# 用法：bash scripts/generate-cert.sh [服务器IP或域名]
-# 默认 CN/SAN 使用传入的服务器 IP。
+# 用法：bash scripts/generate-cert.sh <服务器IP或域名>
+# 参数为必填：传入你自己的服务器 IP 或域名，写入证书的 CN/SAN。
 # ============================================================
 set -euo pipefail
 
-SERVER_IP="${1:-121.37.119.20}"
+SERVER_IP="${1:-}"
+if [ -z "$SERVER_IP" ]; then
+  echo "用法：bash scripts/generate-cert.sh <服务器IP或域名>"
+  echo "示例：bash scripts/generate-cert.sh 192.168.1.100"
+  exit 1
+fi
+
 CERT_DIR="$(cd "$(dirname "$0")/../certs" && pwd)"
 
 mkdir -p "$CERT_DIR"
