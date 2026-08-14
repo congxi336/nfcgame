@@ -59,4 +59,7 @@ dependencies {
 
     // 协程
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+
+    // 生物识别（指纹 / 面容 / 锁屏 PIN）
+    implementation 'androidx.biometric:biometric:1.1.0'
 }

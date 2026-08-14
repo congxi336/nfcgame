@@ -117,15 +117,6 @@
                 android:padding="14dp"
                 android:textSize="14sp"
                 android:visibility="gone" />
-
-            <CheckBox
-                android:id="@+id/cb_attach_key"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/enroll_encrypt_attach"
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
         </LinearLayout>
 
         <!-- 图片：从相册选择 -->

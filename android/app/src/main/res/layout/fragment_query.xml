@@ -85,6 +85,30 @@
                 android:textColor="@color/neon_green"
                 android:textAllCaps="false"
                 android:visibility="gone" />
+
+            <!-- 卡片上存储的明文数据（NDEF，未加密时显示） -->
+            <TextView
+                android:id="@+id/tv_card_data_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/query_card_data_label"
+                android:textColor="@color/neon_cyan"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tv_card_data"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_input"
+                android:padding="14dp"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:lineSpacingExtra="3dp"
+                android:visibility="gone" />
         </LinearLayout>
 
     </LinearLayout>

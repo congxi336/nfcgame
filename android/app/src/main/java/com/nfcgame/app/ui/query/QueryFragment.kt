@@ -43,6 +43,9 @@ class QueryFragment : Fragment() {
     /** 当前展示的图片 URL（用于保存到相册） */
     private var currentImageUrl: String? = null
 
+    /** 当前卡片上存储的明文数据（NDEF），未加密时非空 */
+    private var currentCardData: String? = null
+
     /** Android 9 及以下保存图片需要存储权限 */
     private val requestStoragePermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -66,7 +69,7 @@ class QueryFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val helper = (requireActivity() as MainActivity).nfcHelper
-        helper.onUidRead = { uid -> onUidRead(uid) }
+        helper.onTagRead = { uid, cardData -> onTagRead(uid, cardData) }
 
         // 保存图片按钮
         binding.btnSaveImage.setOnClickListener { onSaveImageClick() }
@@ -92,7 +95,7 @@ class QueryFragment : Fragment() {
     }
 
     /** 读卡成功回调 */
-    private fun onUidRead(uid: String) {
+    private fun onTagRead(uid: String, cardData: String?) {
         if (_binding == null) return
 
         // 触感反馈
@@ -104,6 +107,7 @@ class QueryFragment : Fragment() {
             vibrator?.vibrate(50)
         }
 
+        currentCardData = cardData
         binding.tvStatus.text = getString(R.string.query_reading)
         queryAndShow(uid)
     }
@@ -123,7 +127,6 @@ class QueryFragment : Fragment() {
                             info.content.orEmpty(),
                             info.imageUrl,
                             info.encrypted ?: 0,
-                            info.attachKey,
                         )
                     }
                 }
@@ -141,10 +144,9 @@ class QueryFragment : Fragment() {
         content: String,
         imageUrl: String?,
         encrypted: Int,
-        attachKey: String?,
     ) {
         if (encrypted == 1) {
-            val result = decryptContent(content, attachKey)
+            val result = decryptContent(content)
             val payload = result.payload
             if (payload != null) {
                 renderInfo(uid, payload.title, payload.content, payload.imageUrl, result.keyLabel)
@@ -157,6 +159,7 @@ class QueryFragment : Fragment() {
                 binding.ivImage.visibility = View.GONE
                 binding.btnSaveImage.visibility = View.GONE
                 currentImageUrl = null
+                renderCardData()
                 binding.cardResult.visibility = View.VISIBLE
             }
         } else {
@@ -191,34 +194,44 @@ class QueryFragment : Fragment() {
             binding.btnSaveImage.visibility = View.GONE
         }
 
+        renderCardData()
         binding.cardResult.visibility = View.VISIBLE
+    }
+
+    /**
+     * 渲染卡片上存储的明文数据（NDEF）。
+     * 读到了明文（未加密）则展示；读不到/已加密则隐藏（跳过）。
+     */
+    private fun renderCardData() {
+        val data = currentCardData
+        if (data.isNullOrBlank()) {
+            binding.tvCardDataLabel.visibility = View.GONE
+            binding.tvCardData.visibility = View.GONE
+        } else {
+            binding.tvCardDataLabel.visibility = View.VISIBLE
+            binding.tvCardData.visibility = View.VISIBLE
+            binding.tvCardData.text = data
+        }
     }
 
     /**
      * 解密结果。
      * @param payload 解密后的完整载荷（标题+内容+图片），null 表示解密失败
-     * @param keyLabel 命中的密钥标识（备注或「附加密钥」）
+     * @param keyLabel 命中的密钥标识（备注）
      */
     private data class DecryptResult(val payload: CryptoUtils.Payload?, val keyLabel: String?)
 
     /**
-     * 按优先级解密：附加密钥 → 本地密钥依次尝试 → 失败。
+     * 用设备上所有密钥依次尝试解密，全部失败返回 null 载荷。
+     * 密钥只在本地，服务器不存密钥，因此解密完全依赖本机密钥列表。
      */
-    private fun decryptContent(ciphertext: String, attachKey: String?): DecryptResult {
-        // 1. 优先附加密钥
-        if (!attachKey.isNullOrBlank()) {
-            CryptoUtils.decryptPayload(ciphertext, attachKey)?.let {
-                return DecryptResult(it, getString(R.string.enroll_encrypt_attach_short))
-            }
-        }
-        // 2. 本地所有密钥依次尝试
+    private fun decryptContent(ciphertext: String): DecryptResult {
         val keys = KeyManager.getKeys(requireContext())
         for (entry in keys) {
             CryptoUtils.decryptPayload(ciphertext, entry.key)?.let {
                 return DecryptResult(it, entry.remark.ifBlank { "密钥 ${entry.key.take(4)}…" })
             }
         }
-        // 3. 全部失败
         return DecryptResult(null, null)
     }
 

@@ -65,7 +65,7 @@ class EnrollFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val helper = (requireActivity() as MainActivity).nfcHelper
-        helper.onUidRead = { uid ->
+        helper.onTagRead = { uid, _ ->
             currentUid = uid
             binding.etUid.setText(uid)
             Toast.makeText(requireContext(), "已读取卡片: $uid", Toast.LENGTH_SHORT).show()
@@ -202,9 +202,9 @@ class EnrollFragment : Fragment() {
             return
         }
 
-        // 加密处理：标题、内容、图片整体打包加密（三者都不明文上传）
+        // 加密处理：标题、内容、图片整体打包加密。
+        // 密钥只在本地使用，绝不随数据上传服务器（服务器只存密文）。
         var encrypted = 0
-        var attachKey: String? = null
         var finalTitle = title
         var finalContent = content
         var finalImageUrl = imageUrl
@@ -218,9 +218,6 @@ class EnrollFragment : Fragment() {
             finalTitle = getString(R.string.enroll_encrypted_placeholder)
             finalImageUrl = ""
             encrypted = 1
-            if (binding.cbAttachKey.isChecked) {
-                attachKey = key
-            }
         }
 
         binding.btnSave.isEnabled = false
@@ -234,7 +231,6 @@ class EnrollFragment : Fragment() {
                 content = finalContent,
                 imageUrl = finalImageUrl,
                 encrypted = encrypted,
-                attachKey = attachKey,
             )
             when (result) {
                 is NfcRepository.Result.Success -> {
@@ -261,7 +257,6 @@ class EnrollFragment : Fragment() {
         binding.ivPreview.setImageDrawable(null)
         binding.ivPreview.visibility = View.GONE
         binding.swEncrypt.isChecked = false
-        binding.cbAttachKey.isChecked = false
         binding.etManualKey.text?.clear()
     }
 

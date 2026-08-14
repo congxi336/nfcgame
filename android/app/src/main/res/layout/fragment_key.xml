@@ -43,11 +43,49 @@
             android:textAllCaps="false" />
     </LinearLayout>
 
-    <!-- 密钥列表 -->
-    <ScrollView
+    <!-- 锁定提示（验证身份后显示密钥） -->
+    <LinearLayout
+        android:id="@+id/ll_lock"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/key_lock_icon"
+            android:textSize="48sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/key_lock_hint"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            android:gravity="center" />
+
+        <Button
+            android:id="@+id/btn_unlock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:background="@drawable/bg_btn_primary"
+            android:text="@string/key_unlock"
+            android:textColor="@color/bg_dark"
+            android:textAllCaps="false" />
+    </LinearLayout>
+
+    <!-- 密钥列表 -->
+    <ScrollView
+        android:id="@+id/scroll_keys"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone">
 
         <LinearLayout
             android:id="@+id/key_container"
@@ -61,7 +99,8 @@
     <TextView
         android:id="@+id/tv_empty"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:gravity="center"
         android:padding="32dp"
         android:text="@string/key_empty"

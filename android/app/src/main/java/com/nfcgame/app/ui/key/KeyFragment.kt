@@ -9,6 +9,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.nfcgame.app.R
@@ -20,12 +23,19 @@ import com.nfcgame.app.util.KeyManager
 
 /**
  * 密钥页：管理本地密钥（添加/备注/分发/删除/刷新）。
- * 密钥仅存本机 SharedPreferences，不上传服务器。
+ * 进入时需通过生物识别（指纹/面容/锁屏 PIN）验证，验证通过后才显示密钥。
  */
 class KeyFragment : Fragment() {
 
     private var _binding: FragmentKeyBinding? = null
     private val binding get() = _binding!!
+
+    /** 本次进入是否已通过身份验证 */
+    private var verified = false
+
+    private val executor by lazy { ContextCompat.getMainExecutor(requireContext()) }
+
+    private var biometricPrompt: BiometricPrompt? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -40,11 +50,78 @@ class KeyFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         binding.btnAddKey.setOnClickListener { showAddDialog() }
         binding.btnRefresh.setOnClickListener { refresh() }
-        refresh()
+        binding.btnUnlock.setOnClickListener { authenticate() }
     }
 
     override fun onResume() {
         super.onResume()
+        if (verified) {
+            showKeys()
+        } else {
+            authenticate()
+        }
+    }
+
+    /** 生物识别验证 */
+    private fun authenticate() {
+        val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or
+            BiometricManager.Authenticators.BIOMETRIC_WEAK or
+            BiometricManager.Authenticators.DEVICE_CREDENTIAL
+
+        val status = BiometricManager.from(requireContext()).canAuthenticate(authenticators)
+        if (status != BiometricManager.BIOMETRIC_SUCCESS) {
+            // 设备不支持 / 未录入任何凭证：降级直接显示，并提示
+            verified = true
+            showKeys()
+            if (status == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED ||
+                status == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE
+            ) {
+                Toast.makeText(requireContext(), R.string.key_auth_unsupported, Toast.LENGTH_LONG).show()
+            }
+            return
+        }
+
+        showLocked()
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(getString(R.string.key_auth_title))
+            .setSubtitle(getString(R.string.key_auth_subtitle))
+            .setAllowedAuthenticators(authenticators)
+            .build()
+
+        val prompt = BiometricPrompt(this, executor, object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                verified = true
+                showKeys()
+            }
+
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                showLocked()
+                if (errorCode != BiometricPrompt.ERROR_USER_CANCELED &&
+                    errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON
+                ) {
+                    Toast.makeText(requireContext(), R.string.key_auth_cancel, Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onAuthenticationFailed() {
+                // 单次识别失败，可重试，不额外处理
+            }
+        })
+        biometricPrompt = prompt
+        prompt.authenticate(promptInfo)
+    }
+
+    /** 显示锁定态 */
+    private fun showLocked() {
+        binding.llLock.visibility = View.VISIBLE
+        binding.scrollKeys.visibility = View.GONE
+        binding.tvEmpty.visibility = View.GONE
+    }
+
+    /** 显示密钥（列表或空提示） */
+    private fun showKeys() {
+        binding.llLock.visibility = View.GONE
         refresh()
     }
 
@@ -53,8 +130,10 @@ class KeyFragment : Fragment() {
         val keys = KeyManager.getKeys(requireContext())
         binding.keyContainer.removeAllViews()
         if (keys.isEmpty()) {
+            binding.scrollKeys.visibility = View.GONE
             binding.tvEmpty.visibility = View.VISIBLE
         } else {
+            binding.scrollKeys.visibility = View.VISIBLE
             binding.tvEmpty.visibility = View.GONE
             keys.forEach { entry -> binding.keyContainer.addView(createKeyView(entry)) }
         }
@@ -130,6 +209,7 @@ class KeyFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        biometricPrompt?.cancelAuthentication()
         _binding = null
     }
 }
