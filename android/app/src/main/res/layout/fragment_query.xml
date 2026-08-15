@@ -24,8 +24,9 @@
             android:textStyle="bold"
             android:gravity="center" />
 
-        <!-- 扫描动画占位：简单的荧光圆环 -->
+        <!-- 扫描动画占位：简单的荧光圆环（呼吸脉冲由 QueryFragment 驱动） -->
         <View
+            android:id="@+id/view_scan_ring"
             android:layout_width="120dp"
             android:layout_height="120dp"
             android:layout_marginTop="48dp"

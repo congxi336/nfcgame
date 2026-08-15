@@ -19,6 +19,7 @@ import com.nfcgame.app.R
 import com.nfcgame.app.databinding.FragmentEnrollBinding
 import com.nfcgame.app.network.HttpClient
 import com.nfcgame.app.network.NfcRepository
+import com.nfcgame.app.util.AnimUtils
 import com.nfcgame.app.util.CryptoUtils
 import com.nfcgame.app.util.KeyEntry
 import com.nfcgame.app.util.KeyManager
@@ -68,6 +69,8 @@ class EnrollFragment : Fragment() {
         helper.onTagRead = { uid, _ ->
             currentUid = uid
             binding.etUid.setText(uid)
+            // 读到卡片：UID 输入框闪亮回弹，提示触碰成功
+            AnimUtils.attention(binding.etUid)
             Toast.makeText(requireContext(), "已读取卡片: $uid", Toast.LENGTH_SHORT).show()
         }
 
@@ -96,16 +99,30 @@ class EnrollFragment : Fragment() {
         // 保存按钮
         binding.btnSave.setOnClickListener { save() }
 
-        // 加密开关：显示/隐藏加密区域
+        // 按压反馈
+        AnimUtils.pressScale(binding.btnTapCard)
+        AnimUtils.pressScale(binding.btnPickImage)
+        AnimUtils.pressScale(binding.btnSave)
+
+        // 加密开关：展开 / 收起加密区域（高度 + 透明度过渡）
         binding.swEncrypt.setOnCheckedChangeListener { _, checked ->
-            binding.llEncryptArea.visibility = if (checked) View.VISIBLE else View.GONE
+            if (checked) {
+                AnimUtils.expandVertically(binding.llEncryptArea)
+            } else {
+                AnimUtils.collapseVertically(binding.llEncryptArea)
+            }
         }
 
-        // 密钥 Spinner 选择：选中「手动输入」时显示输入框
+        // 密钥 Spinner 选择：选中「手动输入」时滑入输入框
         binding.spKey.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val isManual = position >= availableKeys.size
-                binding.etManualKey.visibility = if (isManual) View.VISIBLE else View.GONE
+                if (isManual) {
+                    binding.etManualKey.visibility = View.VISIBLE
+                    AnimUtils.fadeInUp(binding.etManualKey, distance = 10f)
+                } else {
+                    AnimUtils.fadeOut(binding.etManualKey)
+                }
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -146,8 +163,8 @@ class EnrollFragment : Fragment() {
     /** 相册选图回调：预览 + 上传 */
     private fun onImagePicked(uri: Uri) {
         binding.ivPreview.setImageURI(uri)
-        binding.ivPreview.visibility = View.VISIBLE
-        binding.tvEnrollStatus.text = "正在上传图片…"
+        AnimUtils.popIn(binding.ivPreview, from = 0.9f)
+        AnimUtils.swapText(binding.tvEnrollStatus) { binding.tvEnrollStatus.text = "正在上传图片…" }
         uploadImage(uri)
     }
 
@@ -159,11 +176,15 @@ class EnrollFragment : Fragment() {
                 is NfcRepository.Result.Success -> {
                     val fullUrl = BuildConfig.SERVER_URL.trimEnd('/') + result.data
                     binding.etImageUrl.setText(fullUrl)
-                    binding.tvEnrollStatus.text = "图片上传成功"
+                    AnimUtils.swapText(binding.tvEnrollStatus) {
+                        binding.tvEnrollStatus.text = "图片上传成功"
+                    }
                     Toast.makeText(requireContext(), R.string.enroll_image_uploaded, Toast.LENGTH_SHORT).show()
                 }
                 is NfcRepository.Result.Error -> {
-                    binding.tvEnrollStatus.text = "图片上传失败：${result.message}"
+                    AnimUtils.swapText(binding.tvEnrollStatus) {
+                        binding.tvEnrollStatus.text = "图片上传失败：${result.message}"
+                    }
                     Toast.makeText(requireContext(), "上传失败：${result.message}", Toast.LENGTH_LONG).show()
                 }
             }
@@ -221,7 +242,7 @@ class EnrollFragment : Fragment() {
         }
 
         binding.btnSave.isEnabled = false
-        binding.tvEnrollStatus.text = "正在保存…"
+        AnimUtils.swapText(binding.tvEnrollStatus) { binding.tvEnrollStatus.text = "正在保存…" }
 
         lifecycleScope.launch {
             val result = NfcRepository.saveInfo(
@@ -235,12 +256,16 @@ class EnrollFragment : Fragment() {
             when (result) {
                 is NfcRepository.Result.Success -> {
                     Toast.makeText(requireContext(), R.string.enroll_success, Toast.LENGTH_SHORT).show()
-                    binding.tvEnrollStatus.text = "保存成功"
+                    AnimUtils.swapText(binding.tvEnrollStatus) {
+                        binding.tvEnrollStatus.text = "保存成功"
+                    }
                     resetForm()
                 }
                 is NfcRepository.Result.Error -> {
                     Toast.makeText(requireContext(), result.message, Toast.LENGTH_LONG).show()
-                    binding.tvEnrollStatus.text = result.message
+                    AnimUtils.swapText(binding.tvEnrollStatus) {
+                        binding.tvEnrollStatus.text = result.message
+                    }
                 }
             }
             binding.btnSave.isEnabled = true

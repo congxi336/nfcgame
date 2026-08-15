@@ -1,5 +1,6 @@
 package com.nfcgame.app.ui.query
 
+import android.animation.ValueAnimator
 import android.Manifest
 import android.content.ContentValues
 import android.content.pm.PackageManager
@@ -18,11 +19,13 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.nfcgame.app.MainActivity
 import com.nfcgame.app.R
 import com.nfcgame.app.databinding.FragmentQueryBinding
 import com.nfcgame.app.network.HttpClient
 import com.nfcgame.app.network.NfcRepository
+import com.nfcgame.app.util.AnimUtils
 import com.nfcgame.app.util.CryptoUtils
 import com.nfcgame.app.util.KeyManager
 import kotlinx.coroutines.Dispatchers
@@ -56,6 +59,9 @@ class QueryFragment : Fragment() {
             }
         }
 
+    /** 扫描圆环的呼吸脉冲动画（onDestroyView 时取消） */
+    private var pulseAnimator: ValueAnimator? = null
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -73,6 +79,10 @@ class QueryFragment : Fragment() {
 
         // 保存图片按钮
         binding.btnSaveImage.setOnClickListener { onSaveImageClick() }
+        AnimUtils.pressScale(binding.btnSaveImage)
+
+        // 扫描圆环：等待状态下的呼吸脉冲
+        pulseAnimator = AnimUtils.pulse(binding.viewScanRing, requireContext())
     }
 
     override fun onResume() {
@@ -107,8 +117,16 @@ class QueryFragment : Fragment() {
             vibrator?.vibrate(50)
         }
 
+        // 扫描成功：圆环爆发一次，随后恢复呼吸脉冲
+        pulseAnimator?.cancel()
+        AnimUtils.scanBurst(binding.viewScanRing) {
+            if (_binding != null) {
+                pulseAnimator = AnimUtils.pulse(binding.viewScanRing, requireContext())
+            }
+        }
+
         currentCardData = cardData
-        binding.tvStatus.text = getString(R.string.query_reading)
+        showStatus(getString(R.string.query_reading))
         queryAndShow(uid)
     }
 
@@ -160,7 +178,7 @@ class QueryFragment : Fragment() {
                 binding.btnSaveImage.visibility = View.GONE
                 currentImageUrl = null
                 renderCardData()
-                binding.cardResult.visibility = View.VISIBLE
+                animateResultCardIn()
             }
         } else {
             renderInfo(uid, title, content, imageUrl.orEmpty(), null)
@@ -188,6 +206,7 @@ class QueryFragment : Fragment() {
                 .load(imageUrl)
                 .placeholder(R.drawable.bg_neon_card)
                 .error(R.drawable.bg_neon_card)
+                .transition(DrawableTransitionOptions.withCrossFade(220))
                 .into(binding.ivImage)
         } else {
             binding.ivImage.visibility = View.GONE
@@ -195,7 +214,36 @@ class QueryFragment : Fragment() {
         }
 
         renderCardData()
+        animateResultCardIn()
+    }
+
+    /** 结果卡片入场：整体上浮淡入，随后子元素逐个交错出现 */
+    private fun animateResultCardIn() {
         binding.cardResult.visibility = View.VISIBLE
+        binding.cardResult.alpha = 0f
+        binding.cardResult.translationY = 48f
+        binding.cardResult.scaleX = 0.96f
+        binding.cardResult.scaleY = 0.96f
+        binding.cardResult.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(360L)
+            .setInterpolator(android.view.animation.DecelerateInterpolator())
+            .withEndAction {
+                // 仅对当前可见的子元素做交错入场
+                val children = listOfNotNull(
+                    binding.tvTitle.takeIf { it.visibility == View.VISIBLE },
+                    binding.tvContent.takeIf { it.visibility == View.VISIBLE },
+                    binding.ivImage.takeIf { it.visibility == View.VISIBLE },
+                    binding.btnSaveImage.takeIf { it.visibility == View.VISIBLE },
+                    binding.tvCardDataLabel.takeIf { it.visibility == View.VISIBLE },
+                    binding.tvCardData.takeIf { it.visibility == View.VISIBLE },
+                )
+                AnimUtils.staggerIn(children, duration = 240L, step = 55L)
+            }
+            .start()
     }
 
     /**
@@ -328,20 +376,32 @@ class QueryFragment : Fragment() {
     /** 根据 MIME 推断扩展名 */
     private fun extFromMime(mime: String): String = mime.substringAfter("/", "jpg")
 
-    /** 显示状态提示 */
+    /** 显示状态提示（文字淡换；错误时轻抖一下） */
     private fun showStatus(text: String, isError: Boolean = false) {
-        binding.tvStatus.text = text
-        binding.tvStatus.setTextColor(
-            ContextCompat.getColor(
-                requireContext(),
-                if (isError) R.color.error_red else R.color.neon_green,
-            )
+        val color = ContextCompat.getColor(
+            requireContext(),
+            if (isError) R.color.error_red else R.color.neon_green,
         )
-        binding.cardResult.visibility = View.GONE
+        // 先抖动再淡换，避免互相取消
+        if (isError) {
+            AnimUtils.shake(binding.tvStatus)
+        }
+        AnimUtils.swapText(binding.tvStatus) {
+            if (_binding != null) {
+                binding.tvStatus.text = text
+                binding.tvStatus.setTextColor(color)
+            }
+        }
+
+        if (binding.cardResult.visibility == View.VISIBLE) {
+            AnimUtils.fadeOut(binding.cardResult, AnimUtils.FAST)
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        pulseAnimator?.cancel()
+        pulseAnimator = null
         _binding = null
     }
 }

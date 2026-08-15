@@ -18,6 +18,7 @@ import com.nfcgame.app.R
 import com.nfcgame.app.databinding.DialogAddKeyBinding
 import com.nfcgame.app.databinding.FragmentKeyBinding
 import com.nfcgame.app.databinding.ItemKeyBinding
+import com.nfcgame.app.util.AnimUtils
 import com.nfcgame.app.util.KeyEntry
 import com.nfcgame.app.util.KeyManager
 
@@ -51,6 +52,15 @@ class KeyFragment : Fragment() {
         binding.btnAddKey.setOnClickListener { showAddDialog() }
         binding.btnRefresh.setOnClickListener { refresh() }
         binding.btnUnlock.setOnClickListener { authenticate() }
+
+        AnimUtils.pressScale(binding.btnAddKey)
+        AnimUtils.pressScale(binding.btnRefresh)
+        AnimUtils.pressScale(binding.btnUnlock)
+
+        // 锁定页入场：锁图标弹性弹出，提示与按钮依次上浮
+        AnimUtils.popIn(binding.tvLockIcon, delay = 80L)
+        AnimUtils.fadeInUp(binding.tvLockHint, delay = 170L, distance = 12f)
+        AnimUtils.fadeInUp(binding.btnUnlock, delay = 240L, distance = 12f)
     }
 
     override fun onResume() {
@@ -112,30 +122,51 @@ class KeyFragment : Fragment() {
         prompt.authenticate(promptInfo)
     }
 
-    /** 显示锁定态 */
+    /** 显示锁定态（验证失败 / 取消后淡入回到锁定页） */
     private fun showLocked() {
+        binding.llLock.alpha = 0f
         binding.llLock.visibility = View.VISIBLE
+        binding.llLock.animate()
+            .alpha(1f)
+            .setDuration(AnimUtils.FAST)
+            .start()
         binding.scrollKeys.visibility = View.GONE
         binding.tvEmpty.visibility = View.GONE
     }
 
-    /** 显示密钥（列表或空提示） */
+    /** 显示密钥：锁定页淡出缩小，列表交错入场 */
     private fun showKeys() {
-        binding.llLock.visibility = View.GONE
-        refresh()
+        binding.llLock.animate().cancel()
+        binding.llLock.animate()
+            .alpha(0f)
+            .scaleX(0.96f)
+            .scaleY(0.96f)
+            .setDuration(160L)
+            .withEndAction {
+                binding.llLock.visibility = View.GONE
+                binding.llLock.alpha = 1f
+                binding.llLock.scaleX = 1f
+                binding.llLock.scaleY = 1f
+            }
+            .start()
+        refresh(animateIn = true)
     }
 
     /** 重新加载密钥列表 */
-    private fun refresh() {
+    private fun refresh(animateIn: Boolean = false) {
         val keys = KeyManager.getKeys(requireContext())
         binding.keyContainer.removeAllViews()
         if (keys.isEmpty()) {
             binding.scrollKeys.visibility = View.GONE
             binding.tvEmpty.visibility = View.VISIBLE
+            if (animateIn) AnimUtils.fadeInUp(binding.tvEmpty, distance = 16f)
         } else {
             binding.scrollKeys.visibility = View.VISIBLE
             binding.tvEmpty.visibility = View.GONE
-            keys.forEach { entry -> binding.keyContainer.addView(createKeyView(entry)) }
+            val views = keys.map { createKeyView(it) }
+            views.forEach { binding.keyContainer.addView(it) }
+            // 解锁后首次展示：条目逐个上浮入场
+            if (animateIn) AnimUtils.staggerIn(views, step = 60L)
         }
     }
 
@@ -146,6 +177,7 @@ class KeyFragment : Fragment() {
         item.tvKeyMask.text = maskKey(entry.key)
         item.btnExport.setOnClickListener { export(entry) }
         item.btnDelete.setOnClickListener { delete(entry) }
+        item.root.tag = entry.id // 供删除动画定位条目
         return item.root
     }
 
@@ -176,10 +208,20 @@ class KeyFragment : Fragment() {
             .setPositiveButton(R.string.key_delete) { _, _ ->
                 KeyManager.deleteKey(requireContext(), entry.id)
                 Toast.makeText(requireContext(), R.string.key_deleted, Toast.LENGTH_SHORT).show()
-                refresh()
+                animateItemRemoval(entry.id)
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    /** 条目收起淡出后刷新列表 */
+    private fun animateItemRemoval(entryId: String) {
+        val itemView = binding.keyContainer.findViewWithTag<View>(entryId)
+        if (itemView == null) {
+            refresh()
+            return
+        }
+        AnimUtils.removeItem(itemView) { refresh() }
     }
 
     /** 添加密钥对话框 */
